@@ -808,11 +808,15 @@ struct ospf_tlv
   u32 data[];
 };
 
-
+/*
+ * TODO: use flexible array member to deal with
+ * larger frame size.
+ */
 struct ospf_lsa_eth
 {
   u32 data_length;
-  u8 data[];
+  //flexible array member for payload
+  u8 data[2048];
 };
 
 

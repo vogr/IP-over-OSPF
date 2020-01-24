@@ -2172,9 +2172,9 @@ int tap_open(char *devname) {
     .ifr_flags = IFF_TAP | IFF_NO_PI,
   };                                                                                                                  
   int fd = -1;                                                                
-  if ( (fd = open("/dev/net/tap", O_RDWR)) < 0 ) {                                                                    
-       perror("open /dev/net/tap");                        
-       exit(1);              
+  if ( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {                                                                    
+       perror("open /dev/net/tun");                        
+       exit(1);
   }              
   snprintf(ifr.ifr_name, IFNAMSIZ, "%s", devname); // devname = "tun0" or "tun1", etc                                 
                                                                                                                       
@@ -2218,6 +2218,14 @@ io_init(void)
 static int short_loops = 0;
 #define SHORT_LOOP_MAX 10
 
+
+// get tapfd from code dealing with ospf.
+int tapfd = -1;
+int get_tapfd(void) {
+  return tapfd;
+}
+
+
 void
 io_loop(void)
 {
@@ -2228,6 +2236,12 @@ io_loop(void)
   node *n;
   int fdmax = 256;
   struct pollfd *pfd = xmalloc(fdmax * sizeof(struct pollfd));
+
+  // Initialize tap device
+  char dev[IFNAMSIZ] = "tap0";
+  tapfd = tap_open(dev);
+  fprintf(stderr, "Opened tap device (%d).\n", tapfd);
+
 
   watchdog_start1();
   for(;;)
@@ -2246,12 +2260,13 @@ io_loop(void)
       poll_tout = MIN(poll_tout, timeout);
     }
 
-    char dev[IFNAMSIZ] = "tap0";
-    int tapfd = tap_open(dev);
+    // Add tap device to the list of fds to poll
     pfd[0] = (struct pollfd) {
       .fd = tapfd,
       .events = POLLIN | POLLOUT,
     };
+
+
     nfds = 1;
 
     WALK_LIST(n, sock_list)
@@ -2331,6 +2346,7 @@ io_loop(void)
       // MTU defined on tap initialisation (in setup.sh)
       // with the value 2048
       // TODO: does MTU include NULL-terminator ?
+      fprintf(stderr, "Adding incoming ethernet frame in the LSA db (in lsa_eth).\n");
       size_t MAX_PAYLOAD = 2048;
       unsigned char in_buffer[MAX_PAYLOAD];
       ssize_t read_ret = read(pfd[0].fd, in_buffer, MAX_PAYLOAD);
@@ -2339,6 +2355,7 @@ io_loop(void)
           exit(1);
       }
       size_t nread = (size_t)(read_ret);
+      fprintf(stderr, "Read %zd octets on tap device.", nread);
       struct ospf_proto *p = get_global_ospf_proto();
       ospf_originate_eth_lsa(p, in_buffer, nread);
     }

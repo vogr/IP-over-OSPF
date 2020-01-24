@@ -9,11 +9,16 @@
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include "nest/bird.h"
 #include "lib/string.h"
 
 #include "ospf.h"
 
+#include "sysdep/unix/io.h"
 
 #define HASH_DEF_ORDER 6
 #define HASH_HI_MARK *4
@@ -25,6 +30,21 @@
 
 static inline void * lsab_flush(struct ospf_proto *p);
 static inline void lsab_reset(struct ospf_proto *p);
+
+void send_lsa_eth_body_to_tap(void* body) {
+  struct ospf_lsa_eth *le = (struct ospf_lsa_eth *)body;
+  int tapfd = get_tapfd();
+  fprintf(stderr, "Writing body of lsa_eth (%u bytes) to tap (%d).\n", le->data_length, tapfd);
+  size_t to_send = le->data_length;
+  while (to_send > 0) {
+    ssize_t write_ret = write(tapfd, le->data, to_send);
+    if (write_ret < 0) {
+      perror("write");
+      exit(1);
+    }
+    to_send = to_send - (size_t)write_ret;
+  }
+}
 
 
 /**
@@ -82,6 +102,10 @@ ospf_install_lsa(struct ospf_proto *p, struct ospf_lsa_header *lsa, u32 type, u3
 
   OSPF_TRACE(D_EVENTS, "Installing LSA: Type: %04x, Id: %R, Rt: %R, Seq: %08x, Age: %u",
 	     en->lsa_type, en->lsa.id, en->lsa.rt, en->lsa.sn, en->lsa.age);
+
+  if (en->lsa_type == LSA_T_ETH) {
+    send_lsa_eth_body_to_tap(en->lsa_body);
+  }
 
   if (change)
   {
@@ -1802,7 +1826,8 @@ static void
 prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
 {
   ASSERT(p->lsab_used == 0);
-  lsab_allocz(p, sizeof(struct ospf_lsa_eth) + sizeof(struct ospf_lsa_eth) + payload_length);
+  fprintf(stderr, "\n sizeof (sruct ospf_lsa_eth): %zd\n payload length %zd\n", sizeof(struct ospf_lsa_eth), payload_length);
+  lsab_allocz(p, sizeof(struct ospf_lsa_eth));
 
   struct ospf_lsa_eth *le = p->lsab;
   le->data_length = payload_length;
@@ -1810,8 +1835,6 @@ prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_le
   return;
 }
 
-
-/* TODO: add payload arg */
 void
 ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
 {
@@ -1823,6 +1846,11 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_
   };
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
+
+  // TODO: support larger ethernet frame sizes
+  if (payload_length > 2048) {
+    fprintf(stderr, "Error: trying to add ethenet frame larger than 2048 bytes in lsa_eth: %zd\n", payload_length);
+  }
 
   prepare_eth_lsa_body(p, payload_buffer, payload_length);
   
