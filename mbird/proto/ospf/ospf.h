@@ -808,9 +808,11 @@ struct ospf_tlv
   u32 data[];
 };
 
+
 struct ospf_lsa_eth
 {
-  u32 options;
+  u32 data_length;
+  u8 data[];
 };
 
 
@@ -1113,6 +1115,10 @@ void ospf_reset_lsack_queue(struct ospf_neighbor *n);
 void ospf_send_lsack(struct ospf_proto *p, struct ospf_neighbor *n, int queue);
 void ospf_receive_lsack(struct ospf_packet *pkt, struct ospf_iface *ifa, struct ospf_neighbor *n);
 
+
+/* ospf-over-ip helper functions */
+
+struct ospf_proto *get_global_ospf_proto(void);
 
 #include "proto/ospf/rt.h"
 #include "proto/ospf/topology.h"

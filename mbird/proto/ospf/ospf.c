@@ -275,10 +275,22 @@ ospf_cleanup_gr_recovery(struct ospf_proto *p)
   p->gr_cleanup = 0;
 }
 
+
+// Get ospf_proto as a global variable in order
+// to get access from sysdep/io.c (to write LSAs
+// when receiving frames on tap).
+struct ospf_proto *global_ospf_proto;
+
+struct ospf_proto *get_global_ospf_proto(void) {
+  return global_ospf_proto;
+}
+
+
 static int
 ospf_start(struct proto *P)
 {
   struct ospf_proto *p = (struct ospf_proto *) P;
+  global_ospf_proto = p;
   struct ospf_config *c = (struct ospf_config *) (P->cf);
   struct ospf_area_config *ac;
 
@@ -442,8 +454,6 @@ ospf_reload_routes(struct channel *C)
   p->calcrt = 2;
 }
 
-static int first_time = 1;
-
 /**
  * ospf_disp - invokes routing table calculation, aging and also area_disp()
  * @timer: timer usually called every @ospf_proto->tick second, @timer->data
@@ -460,12 +470,6 @@ ospf_disp(timer * timer)
   
   /* Originate or flush local topology LSAs */
   ospf_update_topology(p);
-
-  // /!\ TODO: remove lines below, just a test
-  if (first_time) {
-    first_time = 0;
-    ospf_originate_eth_lsa(p);
-  }
 
   /* Process LSA DB */
   ospf_update_lsadb(p);

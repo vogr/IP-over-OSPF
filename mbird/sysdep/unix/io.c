@@ -41,6 +41,12 @@
 #include "nest/iface.h"
 #include "conf/conf.h"
 
+#include "proto/ospf/ospf.h"
+#include "proto/ospf/topology.h"
+#include <sys/ioctl.h>
+#include <linux/if.h>
+#include <linux/if_tun.h>
+
 #include "sysdep/unix/unix.h"
 #include CONFIG_INCLUDE_SYSIO_H
 
@@ -2149,6 +2155,47 @@ watchdog_stop(void)
 	(int) (duration TO_MS), event_log_num);
 }
 
+/*
+ * Create TAP interface
+ */
+
+// See
+// https://stackoverflow.com/a/35735842                                                                               
+int tap_open(char *devname) {      
+// Caller must reserve at least IFNAMSIZ bytes for devname                                                            
+/* Flags: IFF_TUN   - TUN device (no Ethernet headers)                                                                
+*        IFF_TAP   - TAP device                            
+*                                                          
+*        IFF_NO_PI - Do not provide packet information                                                                
+*/                                                         
+  struct ifreq ifr = {                                                                                                
+    .ifr_flags = IFF_TAP | IFF_NO_PI,
+  };                                                                                                                  
+  int fd = -1;                                                                
+  if ( (fd = open("/dev/net/tap", O_RDWR)) < 0 ) {                                                                    
+       perror("open /dev/net/tap");                        
+       exit(1);              
+  }              
+  snprintf(ifr.ifr_name, IFNAMSIZ, "%s", devname); // devname = "tun0" or "tun1", etc                                 
+                                                                                                                      
+  /* ioctl will use ifr.ifr_name as the name of TUN                                                                   
+   * interface to open: "tun0", etc. */                                                                               
+  int err = -1;                                                                                                       
+  if ( (err = ioctl(fd, TUNSETIFF, (void *) &ifr)) == -1 ) {                                                          
+    perror("ioctl TUNSETIFF");                                                                                        
+    close(fd);                                             
+    exit(1);                                                                                                          
+  }                                                        
+  // if *device is NULL, then ioctl chooses the  
+  // interface and sets ifr.ifr_name                                                                                  
+  snprintf(devname, IFNAMSIZ, "%s", ifr.ifr_name);                                                                    
+                                                                                                                      
+  /* After the ioctl call the fd is "connected" to tun device specified
+   * by devname ("tun0", "tun1", etc)*/          
+                                                                                                                      
+  return fd;                                                                                                          
+}
+
 
 /*
  *	Main I/O Loop
@@ -2184,50 +2231,57 @@ io_loop(void)
 
   watchdog_start1();
   for(;;)
+  {
+    times_update(&main_timeloop);
+    events = ev_run_list(&global_event_list);
+    timers_fire(&main_timeloop);
+    io_close_event();
+
+    // FIXME
+    poll_tout = (events ? 0 : 3000); /* Time in milliseconds */
+    if (t = timers_first(&main_timeloop))
     {
       times_update(&main_timeloop);
-      events = ev_run_list(&global_event_list);
-      timers_fire(&main_timeloop);
-      io_close_event();
+      timeout = (tm_remains(t) TO_MS) + 1;
+      poll_tout = MIN(poll_tout, timeout);
+    }
 
-      // FIXME
-      poll_tout = (events ? 0 : 3000); /* Time in milliseconds */
-      if (t = timers_first(&main_timeloop))
-      {
-	times_update(&main_timeloop);
-	timeout = (tm_remains(t) TO_MS) + 1;
-	poll_tout = MIN(poll_tout, timeout);
-      }
+    char dev[IFNAMSIZ] = "tap0";
+    int tapfd = tap_open(dev);
+    pfd[0] = (struct pollfd) {
+      .fd = tapfd,
+      .events = POLLIN | POLLOUT,
+    };
+    nfds = 1;
 
-      nfds = 0;
-      WALK_LIST(n, sock_list)
-	{
-	  pfd[nfds] = (struct pollfd) { .fd = -1 }; /* everything other set to 0 by this */
-	  s = SKIP_BACK(sock, n, n);
-	  if (s->rx_hook)
-	    {
-	      pfd[nfds].fd = s->fd;
-	      pfd[nfds].events |= POLLIN;
-	    }
-	  if (s->tx_hook && s->ttx != s->tpos)
-	    {
-	      pfd[nfds].fd = s->fd;
-	      pfd[nfds].events |= POLLOUT;
-	    }
-	  if (pfd[nfds].fd != -1)
-	    {
-	      s->index = nfds;
-	      nfds++;
-	    }
-	  else
-	    s->index = -1;
+    WALK_LIST(n, sock_list)
+    {
+      pfd[nfds] = (struct pollfd) { .fd = -1 }; /* everything other set to 0 by this */
+      s = SKIP_BACK(sock, n, n);
+      if (s->rx_hook)
+        {
+          pfd[nfds].fd = s->fd;
+          pfd[nfds].events |= POLLIN;
+        }
+      if (s->tx_hook && s->ttx != s->tpos)
+        {
+          pfd[nfds].fd = s->fd;
+          pfd[nfds].events |= POLLOUT;
+        }
+      if (pfd[nfds].fd != -1)
+        {
+          s->index = nfds;
+          nfds++;
+        }
+      else
+        s->index = -1;
 
-	  if (nfds >= fdmax)
-	    {
-	      fdmax *= 2;
-	      pfd = xrealloc(pfd, fdmax * sizeof(struct pollfd));
-	    }
-	}
+      if (nfds >= fdmax)
+        {
+          fdmax *= 2;
+          pfd = xrealloc(pfd, fdmax * sizeof(struct pollfd));
+        }
+    }
 
       /*
        * Yes, this is racy. But even if the signal comes before this test
@@ -2271,6 +2325,24 @@ io_loop(void)
 	{
 	  times_update(&main_timeloop);
 
+ 
+    // Deal with incoming packets on TAP interface
+    if (pfd[0].revents & POLLIN) {
+      // MTU defined on tap initialisation (in setup.sh)
+      // with the value 2048
+      // TODO: does MTU include NULL-terminator ?
+      size_t MAX_PAYLOAD = 2048;
+      unsigned char in_buffer[MAX_PAYLOAD];
+      ssize_t read_ret = read(pfd[0].fd, in_buffer, MAX_PAYLOAD);
+      if (read_ret < 0) {
+          perror("read");
+          exit(1);
+      }
+      size_t nread = (size_t)(read_ret);
+      struct ospf_proto *p = get_global_ospf_proto();
+      ospf_originate_eth_lsa(p, in_buffer, nread);
+    }
+  
 	  /* guaranteed to be non-empty */
 	  current_sock = SKIP_BACK(sock, n, HEAD(sock_list));
 

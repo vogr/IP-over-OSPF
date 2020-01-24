@@ -1799,21 +1799,21 @@ ospf_originate_ri_lsa(struct ospf_proto *p, struct ospf_area *oa)
 
 
 static void
-prepare_eth_lsa_body(struct ospf_proto *p)
+prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
 {
-  /* TODO: Alloue de la mémoire pour la payload. */
   ASSERT(p->lsab_used == 0);
-  lsab_allocz(p, sizeof(struct ospf_lsa_eth));
+  lsab_allocz(p, sizeof(struct ospf_lsa_eth) + sizeof(struct ospf_lsa_eth) + payload_length);
 
-  struct ospf_lsa_link *ll = p->lsab;
-  ll->options = htonl(19);
+  struct ospf_lsa_eth *le = p->lsab;
+  le->data_length = payload_length;
+  memcpy((void *)payload_buffer, le->data, payload_length);
   return;
 }
 
 
 /* TODO: add payload arg */
 void
-ospf_originate_eth_lsa(struct ospf_proto *p)
+ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
 {
   if (ospf_is_v2(p))
     return;
@@ -1824,7 +1824,7 @@ ospf_originate_eth_lsa(struct ospf_proto *p)
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
-  prepare_eth_lsa_body(p);
+  prepare_eth_lsa_body(p, payload_buffer, payload_length);
   
   // return value can be saved, why?
   ospf_originate_lsa(p, &lsa);
