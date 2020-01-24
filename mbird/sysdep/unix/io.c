@@ -2160,40 +2160,47 @@ watchdog_stop(void)
  */
 
 // See
-// https://stackoverflow.com/a/35735842                                                                               
-int tap_open(char *devname) {      
-// Caller must reserve at least IFNAMSIZ bytes for devname                                                            
-/* Flags: IFF_TUN   - TUN device (no Ethernet headers)                                                                
-*        IFF_TAP   - TAP device                            
-*                                                          
-*        IFF_NO_PI - Do not provide packet information                                                                
-*/                                                         
-  struct ifreq ifr = {                                                                                                
+// https://stackoverflow.com/a/35735842
+int tap_open(char *devname) {
+// Caller must reserve at least IFNAMSIZ bytes for devname
+/* Flags: IFF_TUN   - TUN device (no Ethernet headers)
+*        IFF_TAP   - TAP device
+*
+*        IFF_NO_PI - Do not provide packet information
+*/
+  struct ifreq ifr = {
     .ifr_flags = IFF_TAP | IFF_NO_PI,
-  };                                                                                                                  
-  int fd = -1;                                                                
-  if ( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {                                                                    
-       perror("open /dev/net/tun");                        
+  };
+  int fd = -1;
+  if ( (fd = open("/dev/net/tun", O_RDWR)) < 0 ) {
+       perror("open /dev/net/tun");
        exit(1);
-  }              
-  snprintf(ifr.ifr_name, IFNAMSIZ, "%s", devname); // devname = "tun0" or "tun1", etc                                 
-                                                                                                                      
-  /* ioctl will use ifr.ifr_name as the name of TUN                                                                   
-   * interface to open: "tun0", etc. */                                                                               
-  int err = -1;                                                                                                       
-  if ( (err = ioctl(fd, TUNSETIFF, (void *) &ifr)) == -1 ) {                                                          
-    perror("ioctl TUNSETIFF");                                                                                        
-    close(fd);                                             
-    exit(1);                                                                                                          
-  }                                                        
-  // if *device is NULL, then ioctl chooses the  
-  // interface and sets ifr.ifr_name                                                                                  
-  snprintf(devname, IFNAMSIZ, "%s", ifr.ifr_name);                                                                    
-                                                                                                                      
+  }
+  snprintf(ifr.ifr_name, IFNAMSIZ, "%s", devname); // devname = "tun0" or "tun1", etc
+
+  /* ioctl will use ifr.ifr_name as the name of TUN
+   * interface to open: "tun0", etc. */
+  if (ioctl(fd, TUNSETIFF, (void *) &ifr) == -1 ) {
+    perror("ioctl TUNSETIFF");
+    close(fd);
+    exit(1);
+  }
+
+  // if *device is NULL, then ioctl chooses the
+  // interface and sets ifr.ifr_name
+  snprintf(devname, IFNAMSIZ, "%s", ifr.ifr_name);
+
+  // Set the MTU to make sure that ethernet frames
+  // fit in the lsa_eth
+  ifr.ifr_mtu=1024;
+  if (ioctl(tapfd, SIOCSIFMTU, (void*) &ifr < 0)) {
+    perror("ioctl(SIOCSIFMTU) failed");
+  }
+
   /* After the ioctl call the fd is "connected" to tun device specified
-   * by devname ("tun0", "tun1", etc)*/          
-                                                                                                                      
-  return fd;                                                                                                          
+   * by devname ("tun0", "tun1", etc)*/
+
+  return fd;
 }
 
 
@@ -2340,7 +2347,7 @@ io_loop(void)
 	{
 	  times_update(&main_timeloop);
 
- 
+
     // Deal with incoming packets on TAP interface
     if (pfd[0].revents & POLLIN) {
       // MTU defined on tap initialisation (in setup.sh)
@@ -2359,7 +2366,7 @@ io_loop(void)
       struct ospf_proto *p = get_global_ospf_proto();
       ospf_originate_eth_lsa(p, in_buffer, nread);
     }
-  
+
 	  /* guaranteed to be non-empty */
 	  current_sock = SKIP_BACK(sock, n, HEAD(sock_list));
 
