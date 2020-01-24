@@ -34,7 +34,7 @@ static inline void lsab_reset(struct ospf_proto *p);
 void send_lsa_eth_body_to_tap(void* body) {
   struct ospf_lsa_eth *le = (struct ospf_lsa_eth *)body;
   int tapfd = get_tapfd();
-  fprintf(stderr, "Writing body of lsa_eth (%u bytes) to tap (%d).\n", le->data_length, tapfd);
+  fprintf(stderr, "Writing data in lsa_eth (%u bytes) to tap (%d).\n", le->data_length, tapfd);
   size_t to_send = le->data_length;
   while (to_send > 0) {
     ssize_t write_ret = write(tapfd, le->data, to_send);
@@ -1831,9 +1831,15 @@ prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_le
 
   struct ospf_lsa_eth *le = p->lsab;
   le->data_length = payload_length;
-  memcpy((void *)payload_buffer, le->data, payload_length);
+  memcpy(le->data, (void *)payload_buffer, payload_length);
   return;
 }
+
+// The link-state ID identifies the LSA in the database
+// To prevent overwriting the previous lsas, we use increment
+// the link-state ID.
+// TODO: use cleaner solution.
+u32 next_ls_id = 0;
 
 void
 ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
@@ -1842,8 +1848,11 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_
     return;
 
   struct ospf_new_lsa lsa = {
-    .type = LSA_T_ETH
+    .type = LSA_T_ETH,
+    .id = next_ls_id
   };
+
+  next_ls_id++;
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
