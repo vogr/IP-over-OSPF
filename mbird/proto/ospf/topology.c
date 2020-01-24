@@ -1853,6 +1853,9 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_
   };
 
   next_ls_id++;
+  if (next_ls_id > 255) {
+    next_ls_id = 0;
+  }
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
