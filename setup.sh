@@ -22,6 +22,10 @@ if [[ $1 == "up" ]]; then
     ip link set dev veth_${SIDE}_self netns ns_$SIDE
     ip link set dev veth_${SIDE}_mid netns ns_mid
 
+    ip netns exec ns_${SIDE} bash -c \
+      "ip tuntap add name tap0 mode tap &&
+      ip link set tap0 mtu 2048"
+
     # Activer les interfaces virtuelles veth
     # et activer le forwarding ipv4 et ipv6
     # pour left et right
