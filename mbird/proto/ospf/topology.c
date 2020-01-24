@@ -1823,15 +1823,15 @@ ospf_originate_ri_lsa(struct ospf_proto *p, struct ospf_area *oa)
 
 
 static void
-prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
+prepare_eth_lsa_body(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_length)
 {
   ASSERT(p->lsab_used == 0);
-  fprintf(stderr, "\n sizeof (sruct ospf_lsa_eth): %zd\n payload length %zd\n", sizeof(struct ospf_lsa_eth), payload_length);
+  fprintf(stderr, "\n sizeof (sruct ospf_lsa_eth): %zd\n payload length %zd\n", sizeof(struct ospf_lsa_eth), frame_length);
   lsab_allocz(p, sizeof(struct ospf_lsa_eth));
 
   struct ospf_lsa_eth *le = p->lsab;
-  le->data_length = payload_length;
-  memcpy(le->data, (void *)payload_buffer, payload_length);
+  le->data_length = frame_length;
+  memcpy(le->data, (void *)eth_frame_buffer, frame_length);
   return;
 }
 
@@ -1842,7 +1842,7 @@ prepare_eth_lsa_body(struct ospf_proto *p, u8 *payload_buffer, size_t payload_le
 u32 next_ls_id = 0;
 
 void
-ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length)
+ospf_originate_eth_lsa(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_length)
 {
   if (ospf_is_v2(p))
     return;
@@ -1860,11 +1860,11 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
   // TODO: support larger ethernet frame sizes
-  if (payload_length > 2048) {
-    fprintf(stderr, "Error: trying to add ethenet frame larger than 2048 bytes in lsa_eth: %zd\n", payload_length);
+  if (frame_length > 2048) {
+    fprintf(stderr, "Error: trying to add ethenet frame larger than 2048 bytes in lsa_eth: %zd\n", frame_length);
   }
 
-  prepare_eth_lsa_body(p, payload_buffer, payload_length);
+  prepare_eth_lsa_body(p, eth_frame_buffer, frame_length);
   
   // return value can be saved, why?
   ospf_originate_lsa(p, &lsa);

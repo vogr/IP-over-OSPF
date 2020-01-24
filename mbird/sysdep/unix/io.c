@@ -2192,8 +2192,8 @@ int tap_open(char *devname) {
 
   // Set the MTU to make sure that ethernet frames
   // fit in the lsa_eth
-  ifr.ifr_mtu=1024;
-  if (ioctl(tapfd, SIOCSIFMTU, (void*) &ifr < 0)) {
+  ifr.ifr_mtu=2048;
+  if ( ioctl(fd, SIOCSIFMTU, (void*) &ifr) < 0) {
     perror("ioctl(SIOCSIFMTU) failed");
   }
 

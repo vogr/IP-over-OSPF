@@ -815,7 +815,6 @@ struct ospf_tlv
 struct ospf_lsa_eth
 {
   u32 data_length;
-  //flexible array member for payload
   u8 data[2048];
 };
 

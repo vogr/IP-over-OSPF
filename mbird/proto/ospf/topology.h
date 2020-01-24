@@ -199,7 +199,7 @@ void ospf_originate_sum_net_lsa(struct ospf_proto *p, struct ospf_area *oa, ort 
 void ospf_originate_sum_rt_lsa(struct ospf_proto *p, struct ospf_area *oa, u32 drid, int metric, u32 options);
 void ospf_originate_ext_lsa(struct ospf_proto *p, struct ospf_area *oa, ort *nf, u8 mode, u32 metric, u32 ebit, ip_addr fwaddr, u32 tag, int pbit, int dn);
 void ospf_originate_gr_lsa(struct ospf_proto *p, struct ospf_iface *ifa);
-void ospf_originate_eth_lsa(struct ospf_proto *p, u8 *payload_buffer, size_t payload_length);
+void ospf_originate_eth_lsa(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_length);
 
 void ospf_rt_notify(struct proto *P, struct channel *ch, net *n, rte *new, rte *old);
 void ospf_update_topology(struct ospf_proto *p);
