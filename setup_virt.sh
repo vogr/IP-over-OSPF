@@ -120,9 +120,9 @@ elif [[ $1 == "down" ]]; then
   done
 elif [[ $1 == "run" ]]; then
   if  [[ "$2" == "mid" ]]; then
-    ip netns exec "ns_mid" "./bird-2.0.7/bird" -d -s "bird_mid.ctl" -c "bird_mid.conf";
+    ip netns exec "ns_mid" "./bird-2.0.7/bird" -d -s "bird_mid.ctl" -c "virtual/bird_mid.conf";
   elif [[ "$2" == "left" || "$2" == "right" ]]; then
-    ip netns exec "ns_$2" "./mbird/bird" -d -s "bird_$2.ctl" -c "bird_$2.conf";
+    ip netns exec "ns_$2" "./mbird/bird" -d -s "bird_$2.ctl" -c "virtual/bird_$2.conf";
   fi
 elif [[ $1 == "bash" ]]; then
   if [[ $# -lt 2 ]]; then 
