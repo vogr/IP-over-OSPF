@@ -1852,10 +1852,7 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_
     .id = next_ls_id
   };
 
-  next_ls_id++;
-  if (next_ls_id > 255) {
-    next_ls_id = 0;
-  }
+  next_ls_id = (next_ls_id + 1) % (1024 * 1024);
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
