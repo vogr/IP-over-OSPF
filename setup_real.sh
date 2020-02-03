@@ -37,6 +37,10 @@ fi
 
 if [[ "$1" == "up" ]]; then
     if [[ "$2" == "left" ]]; then
+      systemctl stop NetworkManager
+
+      ip addr add fe80::1/64 dev enp0s31f6
+
       ip tuntap add name tap0 mode tap
       ip addr add 192.168.10.1/24 dev tap0
       ip link set up dev tap0
@@ -48,6 +52,8 @@ if [[ "$1" == "up" ]]; then
 
       #TODO: ajouter adresse IP à l'adaptateur ethernet.
     elif [[ "$2" == "right" ]]; then
+      ip addr add fe80::4/64 dev enp0s31f6
+
       ip tuntap add name tap0 mode tap
       ip addr add 192.168.10.3/24 dev tap0
       ip link set up dev tap0
@@ -61,6 +67,10 @@ if [[ "$1" == "up" ]]; then
       iptables -A FORWARD -i wlp2s0 -o tap0 -j ACCEPT
       iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o wlp2s0 -j MASQUERADE
       #TODO: ajouter adresse IP à l'adaptateur ethernet.
+    elif [[ "$2" == "mid" ]]; then
+      systemctl stop NetworkManager
+      ip addr add fe80::2/64 dev enx503eaae32993
+      ip addr add fe80::3/64 dev enx000ec6d9ad89
     else
       printf "Parameter not recognized %s" "$2"
     fi;
