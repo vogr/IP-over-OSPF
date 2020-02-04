@@ -1838,7 +1838,6 @@ prepare_eth_lsa_body(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_le
 // The link-state ID identifies the LSA in the database
 // To prevent overwriting the previous lsas, we use increment
 // the link-state ID.
-// TODO: use cleaner solution.
 u32 next_ls_id = 0;
 
 void
@@ -1856,7 +1855,6 @@ ospf_originate_eth_lsa(struct ospf_proto *p, u8 *eth_frame_buffer, size_t frame_
 
   OSPF_TRACE(D_EVENTS, "Originate eth_lsa");
 
-  // TODO: support larger ethernet frame sizes
   if (frame_length > 2048) {
     fprintf(stderr, "Error: trying to add ethenet frame larger than 2048 bytes in lsa_eth: %zd\n", frame_length);
   }

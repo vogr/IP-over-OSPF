@@ -809,8 +809,8 @@ struct ospf_tlv
 };
 
 /*
- * TODO: use flexible array member to deal with
- * larger frame size.
+ * Define the Ethernet LSA structure, where data will
+ * store an ethernet frame.
  */
 struct ospf_lsa_eth
 {
