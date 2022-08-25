@@ -1,5 +1,9 @@
 # IP over OSPF
 
+## Presentation
+
+Presention slides of the project (in French) [are available here](beamer/IP-over-OSPF.pdf).
+
 ## Summary
 
 The *Open Shortest Path First* routing protocol (OSPF) is widely used on large networks as a way to automatically configure IP routes between machines on this network. To do so, clients build a link-state database (LSDB) containing information relative to all the other hosts participating to the OSPF protocol on the network. Even though this database is designed to contain link-state data, it turns out that the OSPFv3 specification makes it possible for a client to store arbitrary data in it, and synchronize this database with all the other OSPF hosts on the network.
