@@ -1,4 +1,0 @@
-- Ecrire script pour la demo. Penser à
-  - configuer ipv6 linklocal (fe80::x/64) sur les interfaces
-  - utiliser sudo
-  - les fichiers de config bird
