@@ -2,10 +2,6 @@
 
 ~_i.e., OSPF is my `tap` device_
 
-## Presentation
-
-Presention slides of the project (in French) [are available here](beamer/IP-over-OSPF.pdf).
-
 ## Summary
 
 The *Open Shortest Path First* routing protocol (OSPF, see [RFC5340](https://tools.ietf.org/html/rfc5340), or [Wikipedia](https://de.wikipedia.org/wiki/Open_Shortest_Path_First)) is widely used on large networks as a way to automatically configure IP routes between machines on this network. To do so, clients build a link-state database (LSDB) containing information relative to all the other hosts participating to the OSPF protocol on the network. Even though this database is designed to contain link-state data, __it turns out that the OSPFv3 specification makes it possible for a client to store arbitrary data in it__, and synchronize this database with all the other OSPF hosts on the network.
@@ -327,3 +323,9 @@ A client willing to participate in the IP-over-OSPF protocol:
 
 -   Should interpret the payload of any Ethernet LSA arriving in its
     LSDB as an Ethernet frame, except if it created this particular LSA.
+
+
+## Presentation
+
+Presention slides of the project (in French) [are available here](beamer/IP-over-OSPF.pdf).
+
