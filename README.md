@@ -51,6 +51,13 @@ from M to R. L and R are conceptually on
 the same link! This can be checked by using their
 auto-generated link-local IPv6 address instead.
 
+### "Aha!"
+
+The real "aha!" comes from the realization that IP-over-OSPF should really be called tap-over-OSPF or Ethernet-over-OSPF: it gives you an Ethernet link built on top of the OSPF protocol. All the machines connected to the same OSPF "network" (known as an autonomous domain) are conceptually on the same link.
+
+So what if you wanted two machines on _different autonomous domains_ to communicate? If you have an OSPF router present on both autonomous domains, this machine could be forwarding between one "link" to the other. And how do you setup IP addresses across these links then?
+
+You may run OSPF over IP-over-OSPF ... and I don't think there's anything preventing you from recursing: IP-over-OSPF over OSPF over IP-over-OSPF. And so on, and so on!
 
 ### Context
 
